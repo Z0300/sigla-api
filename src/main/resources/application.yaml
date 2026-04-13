@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: SpringCore
+  jwt:
+    secret: ${SPRING_JWT_SECRET}
+    accessTokenExpiration: 900 # 5m
+    refreshTokenExpiration: 604800 # 7d
+  profiles:
+    active: dev
