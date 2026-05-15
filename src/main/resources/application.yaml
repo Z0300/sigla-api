@@ -3,7 +3,7 @@ spring:
     name: SpringCore
   jwt:
     secret: ${SPRING_JWT_SECRET}
-    accessTokenExpiration: 900 # 5m
-    refreshTokenExpiration: 604800 # 7d
+    access-token-expiration-ms: 900000 # 15m
+    refresh-token-expiration-ms: 604800000 # 7d
   profiles:
     active: dev
