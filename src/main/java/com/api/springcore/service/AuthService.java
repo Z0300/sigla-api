@@ -72,7 +72,7 @@ public class AuthService {
 
     @Transactional
     public DomainResponse.TokenDto login(AuthRequest.Login request) {
-        // Spring Security handles credential validation
+
         authManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 

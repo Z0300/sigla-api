@@ -11,15 +11,19 @@ public class ApiResponse {
     @Data
     @Builder
     public static class Success<T> {
+
+        @Builder.Default
         private boolean success = true;
-        private String message;
+
+        @Builder.Default
+        private String message = "Records retrieved successfully";
         private T data;
         private Meta meta;
     }
 
     @Data @Builder
     public static class Error {
-        private boolean success = false;
+        private boolean success;
         private String message;
         private String errorCode;
         private Object details;

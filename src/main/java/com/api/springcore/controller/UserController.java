@@ -18,6 +18,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/v1/users")
 @RequiredArgsConstructor
@@ -55,12 +57,13 @@ public class UserController {
     @GetMapping
     @Operation(summary = "List all users (paginated, searchable)")
     @PreAuthorize("hasAuthority('users:read')")
-    public ResponseEntity<ApiResponse.Success<Page<DomainResponse.UserSummaryDto>>> listUsers(
+    public ResponseEntity<ApiResponse.Success<List<DomainResponse.UserSummaryDto>>> listUsers(
             @RequestParam(required = false) String search,
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
         Page<DomainResponse.UserSummaryDto> page = userService.getUsers(search, pageable);
-        return ResponseEntity.ok(ApiResponse.Success.<Page<DomainResponse.UserSummaryDto>>builder()
-                .data(page)
+        return ResponseEntity.ok(ApiResponse.Success.<List<DomainResponse.UserSummaryDto>>builder()
+                .message("Users retrieved")
+                .data(page.getContent())
                 .meta(ApiResponse.Meta.builder()
                         .page(page.getNumber())
                         .size(page.getSize())

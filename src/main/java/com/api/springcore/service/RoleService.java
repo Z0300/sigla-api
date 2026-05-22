@@ -7,7 +7,9 @@ import com.api.springcore.entity.Role;
 import com.api.springcore.exception.BadRequestException;
 import com.api.springcore.exception.DuplicateResourceException;
 import com.api.springcore.exception.ResourceNotFoundException;
-import com.api.springcore.repository.PermissionRepository;
+import com.api.springcore.helper.PermissionResolver;
+
+import com.api.springcore.mapper.RoleMapper;
 import com.api.springcore.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,10 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
+
 
 @Slf4j
 @Service
@@ -26,18 +27,19 @@ import java.util.stream.Collectors;
 public class RoleService {
 
     private final RoleRepository roleRepository;
-    private final PermissionRepository permissionRepository;
+    private final RoleMapper roleMapper;
+    private final PermissionResolver permissionResolver;
 
     @Transactional(readOnly = true)
     public List<DomainResponse.RoleDto> getAllRoles() {
-        return roleRepository.findAll().stream().map(this::toDto).toList();
+        return roleRepository.findAll().stream().map(roleMapper::toDto).toList();
     }
 
     @Transactional(readOnly = true)
     public DomainResponse.RoleDto getRole(Long id) {
         Role role = roleRepository.findByIdWithPermissions(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", id));
-        return toDto(role);
+        return roleMapper.toDto(role);
     }
 
     @Transactional
@@ -46,7 +48,7 @@ public class RoleService {
             throw new DuplicateResourceException("Role already exists: " + request.getName());
         }
 
-        Set<Permission> permissions = resolvePermissions(request.getPermissionIds());
+        Set<Permission> permissions = permissionResolver.resolve(request.getPermissionIds());
         Role role = Role.builder()
                 .name(request.getName())
                 .description(request.getDescription())
@@ -55,7 +57,7 @@ public class RoleService {
 
         role = roleRepository.save(role);
         log.info("Role created: {}", role.getName());
-        return toDto(roleRepository.findByIdWithPermissions(role.getId()).orElseThrow());
+        return roleMapper.toDto(roleRepository.findByIdWithPermissions(role.getId()).orElseThrow());
     }
 
     @Transactional
@@ -72,7 +74,7 @@ public class RoleService {
         if (request.getDescription() != null) role.setDescription(request.getDescription());
 
         role = roleRepository.save(role);
-        return toDto(roleRepository.findByIdWithPermissions(role.getId()).orElseThrow());
+        return roleMapper.toDto(roleRepository.findByIdWithPermissions(role.getId()).orElseThrow());
     }
 
     @Transactional
@@ -91,10 +93,10 @@ public class RoleService {
         Role role = roleRepository.findByIdWithPermissions(roleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", roleId));
 
-        Set<Permission> permissions = resolvePermissions(request.getPermissionIds());
+        Set<Permission> permissions = permissionResolver.resolve(request.getPermissionIds());
         role.setPermissions(permissions);
         roleRepository.save(role);
-        return toDto(roleRepository.findByIdWithPermissions(role.getId()).orElseThrow());
+        return roleMapper.toDto(roleRepository.findByIdWithPermissions(role.getId()).orElseThrow());
     }
 
     @Transactional
@@ -102,9 +104,9 @@ public class RoleService {
         Role role = roleRepository.findByIdWithPermissions(roleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", roleId));
 
-        resolvePermissions(request.getPermissionIds()).forEach(role::addPermission);
+        permissionResolver.resolve(request.getPermissionIds()).forEach(role::addPermission);
         roleRepository.save(role);
-        return toDto(roleRepository.findByIdWithPermissions(role.getId()).orElseThrow());
+        return roleMapper.toDto(roleRepository.findByIdWithPermissions(role.getId()).orElseThrow());
     }
 
     @Transactional
@@ -112,31 +114,9 @@ public class RoleService {
         Role role = roleRepository.findByIdWithPermissions(roleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", roleId));
 
-        resolvePermissions(request.getPermissionIds()).forEach(role::removePermission);
+        permissionResolver.resolve(request.getPermissionIds()).forEach(role::removePermission);
         roleRepository.save(role);
-        return toDto(roleRepository.findByIdWithPermissions(role.getId()).orElseThrow());
+        return roleMapper.toDto(roleRepository.findByIdWithPermissions(role.getId()).orElseThrow());
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    private Set<Permission> resolvePermissions(Set<Long> ids) {
-        if (ids == null || ids.isEmpty()) return new HashSet<>();
-        List<Permission> found = permissionRepository.findAllByIdIn(ids);
-        if (found.size() != ids.size()) {
-            throw new BadRequestException("One or more permission IDs are invalid");
-        }
-        return new HashSet<>(found);
-    }
-
-    public DomainResponse.RoleDto toDto(Role role) {
-        return DomainResponse.RoleDto.builder()
-                .id(role.getId())
-                .name(role.getName())
-                .description(role.getDescription())
-                .permissions(role.getPermissions().stream()
-                        .map(p -> DomainResponse.PermissionDto.builder()
-                                .id(p.getId()).name(p.getName()).description(p.getDescription()).build())
-                        .collect(Collectors.toSet()))
-                .build();
-    }
 }

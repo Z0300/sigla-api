@@ -26,9 +26,9 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Transactional(readOnly = true)
     @NullMarked
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmailWithRolesAndPermissions(email)
+        return userRepository.findByEmailWithRolesAndPermissions(email)
+                .map(UserPrincipal::of)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
-        return UserPrincipal.of(user);
     }
 
     @Transactional(readOnly = true)

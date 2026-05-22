@@ -4,10 +4,10 @@ import com.api.springcore.dto.DomainResponse;
 import com.api.springcore.dto.UserRequest;
 import com.api.springcore.entity.Role;
 import com.api.springcore.entity.User;
-import com.api.springcore.exception.BadRequestException;
 import com.api.springcore.exception.DuplicateResourceException;
 import com.api.springcore.exception.ResourceNotFoundException;
-import com.api.springcore.repository.RoleRepository;
+import com.api.springcore.helper.RoleResolver;
+import com.api.springcore.mapper.UserMapper;
 import com.api.springcore.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,10 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -29,20 +26,21 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
+    private final RoleResolver roleResolver;
 
     @Transactional(readOnly = true)
     public Page<DomainResponse.UserSummaryDto> getUsers(String search, Pageable pageable) {
         return userRepository.findAllWithSearch(search, pageable)
-                .map(this::toSummaryDto);
+                .map(userMapper::toSummaryDto);
     }
 
     @Transactional(readOnly = true)
     public DomainResponse.UserDto getUser(Long id) {
         User user = userRepository.findByIdWithRolesAndPermissions(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", id));
-        return toDto(user);
+        return userMapper.toDto(user);
     }
 
     @Transactional
@@ -51,7 +49,7 @@ public class UserService {
             throw new DuplicateResourceException("Email already registered: " + request.getEmail());
         }
 
-        Set<Role> roles = resolveRoles(request.getRoleIds());
+        Set<Role> roles = roleResolver.resolve(request.getRoleIds());
 
         User user = User.builder()
                 .email(request.getEmail().toLowerCase())
@@ -65,7 +63,7 @@ public class UserService {
 
         user = userRepository.save(user);
         log.info("Admin created user: {}", user.getEmail());
-        return toDto(userRepository.findByIdWithRolesAndPermissions(user.getId()).orElseThrow());
+        return userMapper.toDto(userRepository.findByIdWithRolesAndPermissions(user.getId()).orElseThrow());
     }
 
     @Transactional
@@ -78,7 +76,7 @@ public class UserService {
         if (request.getIsActive() != null)               user.setIsActive(request.getIsActive());
 
         user = userRepository.save(user);
-        return toDto(userRepository.findByIdWithRolesAndPermissions(user.getId()).orElseThrow());
+        return userMapper.toDto(userRepository.findByIdWithRolesAndPermissions(user.getId()).orElseThrow());
     }
 
     @Transactional
@@ -95,10 +93,10 @@ public class UserService {
         User user = userRepository.findByIdWithRolesAndPermissions(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
-        Set<Role> roles = resolveRoles(request.getRoleIds());
+        Set<Role> roles = roleResolver.resolve(request.getRoleIds());
         user.setRoles(roles);
         user = userRepository.save(user);
-        return toDto(userRepository.findByIdWithRolesAndPermissions(user.getId()).orElseThrow());
+        return userMapper.toDto(userRepository.findByIdWithRolesAndPermissions(user.getId()).orElseThrow());
     }
 
     @Transactional
@@ -106,10 +104,10 @@ public class UserService {
         User user = userRepository.findByIdWithRolesAndPermissions(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
-        Set<Role> newRoles = resolveRoles(request.getRoleIds());
+        Set<Role> newRoles = roleResolver.resolve(request.getRoleIds());
         newRoles.forEach(user::addRole);
         user = userRepository.save(user);
-        return toDto(userRepository.findByIdWithRolesAndPermissions(user.getId()).orElseThrow());
+        return userMapper.toDto(userRepository.findByIdWithRolesAndPermissions(user.getId()).orElseThrow());
     }
 
     @Transactional
@@ -117,61 +115,9 @@ public class UserService {
         User user = userRepository.findByIdWithRolesAndPermissions(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
-        Set<Role> rolesToRemove = resolveRoles(request.getRoleIds());
+        Set<Role> rolesToRemove = roleResolver.resolve(request.getRoleIds());
         rolesToRemove.forEach(user::removeRole);
         user = userRepository.save(user);
-        return toDto(userRepository.findByIdWithRolesAndPermissions(user.getId()).orElseThrow());
-    }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    private Set<Role> resolveRoles(Set<Long> roleIds) {
-        if (roleIds == null || roleIds.isEmpty()) {
-            Role defaultRole = roleRepository.findByName("USER")
-                    .orElseThrow(() -> new ResourceNotFoundException("Default role USER not found"));
-            return new HashSet<>(Set.of(defaultRole));
-        }
-        List<Role> found = roleRepository.findAllByIdIn(roleIds);
-        if (found.size() != roleIds.size()) {
-            throw new BadRequestException("One or more role IDs are invalid");
-        }
-        return new HashSet<>(found);
-    }
-
-    private DomainResponse.UserDto toDto(User user) {
-        return DomainResponse.UserDto.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .isActive(user.getIsActive())
-                .isEmailVerified(user.getIsEmailVerified())
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .roles(user.getRoles().stream().map(this::toRoleDto).collect(Collectors.toSet()))
-                .build();
-    }
-
-    private DomainResponse.UserSummaryDto toSummaryDto(User user) {
-        return DomainResponse.UserSummaryDto.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .isActive(user.getIsActive())
-                .createdAt(user.getCreatedAt())
-                .build();
-    }
-
-    private DomainResponse.RoleDto toRoleDto(Role role) {
-        return DomainResponse.RoleDto.builder()
-                .id(role.getId())
-                .name(role.getName())
-                .description(role.getDescription())
-                .permissions(role.getPermissions().stream()
-                        .map(p -> DomainResponse.PermissionDto.builder()
-                                .id(p.getId()).name(p.getName()).description(p.getDescription()).build())
-                        .collect(Collectors.toSet()))
-                .build();
+        return userMapper.toDto(userRepository.findByIdWithRolesAndPermissions(user.getId()).orElseThrow());
     }
 }
