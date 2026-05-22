@@ -5,9 +5,12 @@ import com.api.springcore.dto.PermissionRequest;
 import com.api.springcore.entity.Permission;
 import com.api.springcore.exception.DuplicateResourceException;
 import com.api.springcore.exception.ResourceNotFoundException;
+import com.api.springcore.mapper.PermissionMapper;
 import com.api.springcore.repository.PermissionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -20,15 +23,17 @@ import java.util.List;
 public class PermissionService {
 
     private final PermissionRepository permissionRepository;
+    private final PermissionMapper permissionMapper;
 
     @Transactional(readOnly = true)
-    public List<DomainResponse.PermissionDto> getAllPermissions() {
-        return permissionRepository.findAll().stream().map(this::toDto).toList();
+    public Page<DomainResponse.PermissionDto> getAllPermissions(String search, Pageable pageable) {
+        return permissionRepository.findAllWithSearch(search, pageable)
+                .map(permissionMapper::toDto);
     }
 
     @Transactional(readOnly = true)
     public DomainResponse.PermissionDto getPermission(Long id) {
-        return toDto(permissionRepository.findById(id)
+        return permissionMapper.toDto(permissionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Permission", id)));
     }
 
@@ -43,7 +48,7 @@ public class PermissionService {
                 .build();
         perm = permissionRepository.save(perm);
         log.info("Permission created: {}", perm.getName());
-        return toDto(perm);
+        return permissionMapper.toDto(perm);
     }
 
     @Transactional
@@ -59,7 +64,7 @@ public class PermissionService {
         }
         if (request.getDescription() != null) perm.setDescription(request.getDescription());
 
-        return toDto(permissionRepository.save(perm));
+        return permissionMapper.toDto(permissionRepository.save(perm));
     }
 
     @Transactional
@@ -69,10 +74,5 @@ public class PermissionService {
         }
         permissionRepository.deleteById(id);
         log.info("Permission deleted: {}", id);
-    }
-
-    private DomainResponse.PermissionDto toDto(Permission p) {
-        return DomainResponse.PermissionDto.builder()
-                .id(p.getId()).name(p.getName()).description(p.getDescription()).build();
     }
 }

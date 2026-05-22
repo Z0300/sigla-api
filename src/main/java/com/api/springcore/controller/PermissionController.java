@@ -8,6 +8,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,9 +29,19 @@ public class PermissionController {
     @GetMapping
     @PreAuthorize("hasAuthority('permissions:read')")
     @Operation(summary = "List all permissions")
-    public ResponseEntity<ApiResponse.Success<List<DomainResponse.PermissionDto>>> listPermissions() {
+    public ResponseEntity<ApiResponse.Success<List<DomainResponse.PermissionDto>>> listPermissions(
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        Page<DomainResponse.PermissionDto> page = permissionService.getAllPermissions(search, pageable);
         return ResponseEntity.ok(ApiResponse.Success.<List<DomainResponse.PermissionDto>>builder()
-                .data(permissionService.getAllPermissions())
+                .data(page.getContent())
+                .meta(ApiResponse.Meta.builder()
+                        .page(page.getNumber())
+                        .size(page.getSize())
+                        .totalElements(page.getTotalElements())
+                        .totalPages(page.getTotalPages())
+                        .build())
                 .build());
     }
 
