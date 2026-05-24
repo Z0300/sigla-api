@@ -14,6 +14,8 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -100,4 +102,15 @@ public class JwtService {
         return "access".equals(extractTokenType(token));
     }
 
+    @SuppressWarnings("unchecked")
+    public Set<String> extractRoles(String token) {
+        return new HashSet<>((List<String>) extractClaim(token,
+                c -> c.get("roles", List.class)));
+    }
+
+    @SuppressWarnings("unchecked")
+    public Set<String> extractPermissions(String token) {
+        return new HashSet<>((List<String>) extractClaim(token,
+                c -> c.get("permissions", List.class)));
+    }
 }

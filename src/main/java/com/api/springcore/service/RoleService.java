@@ -13,12 +13,18 @@ import com.api.springcore.mapper.RoleMapper;
 import com.api.springcore.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -31,8 +37,26 @@ public class RoleService {
     private final PermissionResolver permissionResolver;
 
     @Transactional(readOnly = true)
-    public List<DomainResponse.RoleDto> getAllRoles() {
-        return roleRepository.findAll().stream().map(roleMapper::toDto).toList();
+    public Page<DomainResponse.RoleDto> getAllRoles(String searchTerm, Pageable pageable) {
+        Page<Long> idPage = roleRepository.findIdsBySearch(searchTerm, pageable);
+
+        if (idPage.isEmpty()) return Page.empty(pageable);
+
+        List<Role> roles = roleRepository.findAllByIds(idPage.getContent());
+
+        Map<Long, Role> roleMap = roles.stream()
+                .collect(Collectors.toMap(Role::getId, r -> r));
+
+        List<Role> ordered = idPage.getContent().stream()
+                .map(roleMap::get)
+                .filter(Objects::nonNull)
+                .toList();
+
+        List<DomainResponse.RoleDto> roleDtoList = ordered.stream()
+                .map(roleMapper::toDto)
+                .toList();
+
+        return new PageImpl<>(roleDtoList, pageable, idPage.getTotalElements());
     }
 
     @Transactional(readOnly = true)

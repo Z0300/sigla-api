@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
+
 
 @Slf4j
 @Service
@@ -26,8 +26,8 @@ public class PermissionService {
     private final PermissionMapper permissionMapper;
 
     @Transactional(readOnly = true)
-    public Page<DomainResponse.PermissionDto> getAllPermissions(String search, Pageable pageable) {
-        return permissionRepository.findAllWithSearch(search, pageable)
+    public Page<DomainResponse.PermissionDto> getAllPermissions(String searchTerm, Pageable pageable) {
+        return permissionRepository.findAllWithSearch(searchTerm, pageable)
                 .map(permissionMapper::toDto);
     }
 

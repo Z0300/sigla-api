@@ -21,8 +21,8 @@ public interface PermissionRepository extends JpaRepository<Permission, Long> {
 
     @Query("""
             select p from Permission p
-            where (:name is null or lower (p.name)
-            like lower(concat('%', :name, '%')))
+            where (:searchTerm is null or lower (p.name)
+            like lower(concat('%', :searchTerm, '%')))
             """)
-    Page<Permission> findAllWithSearch(@Param("name") String name, Pageable pageable);
+    Page<Permission> findAllWithSearch(@Param("searchTerm") String searchTerm, Pageable pageable);
 }

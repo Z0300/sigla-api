@@ -8,6 +8,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,9 +29,20 @@ public class RoleController {
     @GetMapping
     @PreAuthorize("hasAuthority('roles:read')")
     @Operation(summary = "List all roles with their permissions")
-    public ResponseEntity<ApiResponse.Success<List<DomainResponse.RoleDto>>> listRoles() {
+    public ResponseEntity<ApiResponse.Success<List<DomainResponse.RoleDto>>> listRoles(
+            @RequestParam(required = false) String searchTerm,
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        Page<DomainResponse.RoleDto> page = roleService.getAllRoles(searchTerm, pageable);
+
         return ResponseEntity.ok(ApiResponse.Success.<List<DomainResponse.RoleDto>>builder()
-                .data(roleService.getAllRoles())
+                .data(page.getContent())
+                .meta(ApiResponse.Meta.builder()
+                        .page(page.getNumber())
+                        .size(page.getSize())
+                        .totalElements(page.getTotalElements())
+                        .totalPages(page.getTotalPages())
+                        .build())
                 .build());
     }
 

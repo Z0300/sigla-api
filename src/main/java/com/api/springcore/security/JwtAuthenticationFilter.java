@@ -8,14 +8,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -26,7 +29,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String AUTH_HEADER   = "Authorization";
 
     private final JwtService jwtService;
-    private final CustomUserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -40,15 +42,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     && jwtService.isAccessToken(token)
                     && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                Long userId = jwtService.extractUserId(token);
-                UserDetails userDetails = userDetailsService.loadUserById(userId);
+                Long userId      = jwtService.extractUserId(token);
+                String email     = jwtService.extractEmail(token);
+                Set<String> roles       = jwtService.extractRoles(token);
+                Set<String> permissions = jwtService.extractPermissions(token);
 
-                if (userDetails.isEnabled()) {
-                    var auth = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
-                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                }
+                Set<GrantedAuthority> authorities = new HashSet<>();
+                roles.forEach(r -> authorities.add(new SimpleGrantedAuthority("ROLE_" + r)));
+                permissions.forEach(p -> authorities.add(new SimpleGrantedAuthority(p)));
+
+
+                CustomUserDetailsService.UserPrincipal principal = new CustomUserDetailsService.UserPrincipal(
+                        userId, email, null, true, authorities
+                );
+
+                var auth = new UsernamePasswordAuthenticationToken(
+                        principal, null, authorities);
+                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(auth);
             }
         } catch (Exception ex) {
             log.error("JWT authentication error: {}", ex.getMessage());

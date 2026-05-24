@@ -30,10 +30,10 @@ public class PermissionController {
     @PreAuthorize("hasAuthority('permissions:read')")
     @Operation(summary = "List all permissions")
     public ResponseEntity<ApiResponse.Success<List<DomainResponse.PermissionDto>>> listPermissions(
-            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String searchTerm,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        Page<DomainResponse.PermissionDto> page = permissionService.getAllPermissions(search, pageable);
+        Page<DomainResponse.PermissionDto> page = permissionService.getAllPermissions(searchTerm, pageable);
         return ResponseEntity.ok(ApiResponse.Success.<List<DomainResponse.PermissionDto>>builder()
                 .data(page.getContent())
                 .meta(ApiResponse.Meta.builder()
