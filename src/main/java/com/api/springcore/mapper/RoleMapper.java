@@ -23,12 +23,4 @@ public class RoleMapper {
                         .collect(Collectors.toSet()))
                 .build();
     }
-
-    public DomainResponse.RoleSummaryDto toSummaryDto(Role role) {
-        return DomainResponse.RoleSummaryDto.builder()
-                .id(role.getId())
-                .name(role.getName())
-                .description(role.getDescription())
-                .build();
-    }
 }

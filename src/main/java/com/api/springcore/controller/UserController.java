@@ -58,9 +58,9 @@ public class UserController {
     @Operation(summary = "List all users (paginated, searchable)")
     @PreAuthorize("hasAuthority('users:read')")
     public ResponseEntity<ApiResponse.Success<List<DomainResponse.UserSummaryDto>>> listUsers(
-            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String searchTerm,
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
-        Page<DomainResponse.UserSummaryDto> page = userService.getUsers(search, pageable);
+        Page<DomainResponse.UserSummaryDto> page = userService.getUsers(searchTerm, pageable);
         return ResponseEntity.ok(ApiResponse.Success.<List<DomainResponse.UserSummaryDto>>builder()
                 .message("Users retrieved")
                 .data(page.getContent())

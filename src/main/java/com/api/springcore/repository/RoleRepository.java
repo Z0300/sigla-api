@@ -2,6 +2,8 @@ package com.api.springcore.repository;
 
 import com.api.springcore.entity.Role;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -26,4 +28,14 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
 
     @Query("SELECT r FROM Role r WHERE r.id IN :ids")
     List<Role> findAllByIdIn(@Param("ids") Set<Long> ids);
+
+    @Query("SELECT r.id FROM Role r WHERE " +
+            "(:searchTerm IS NULL OR " +
+            "LOWER(r.name)        LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(r.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    Page<Long> findIdsBySearch(@Param("searchTerm") String searchTerm, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"permissions"})
+    @Query("SELECT r FROM Role r WHERE r.id IN :ids")
+    List<Role> findAllByIds(@Param("ids") List<Long> ids);
 }

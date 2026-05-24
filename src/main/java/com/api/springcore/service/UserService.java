@@ -12,13 +12,18 @@ import com.api.springcore.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -31,9 +36,30 @@ public class UserService {
     private final RoleResolver roleResolver;
 
     @Transactional(readOnly = true)
-    public Page<DomainResponse.UserSummaryDto> getUsers(String search, Pageable pageable) {
-        return userRepository.findAllWithSearch(search, pageable)
-                .map(userMapper::toSummaryDto);
+    public Page<DomainResponse.UserSummaryDto> getUsers(String searchTerm, Pageable pageable) {
+
+        Page<Long> idPage = userRepository.findIdsBySearch(searchTerm, pageable);
+
+        if (idPage.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<User> users = userRepository.findAllByIds(idPage.getContent());
+
+        Map<Long, User> userMap = users.stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+
+        List<User> orderedUsers = idPage.getContent().stream()
+                .map(userMap::get)
+                .filter(Objects::nonNull)
+                .toList();
+
+        List<DomainResponse.UserSummaryDto> userDtoList = orderedUsers.stream()
+                .map(userMapper::toSummaryDto)
+                .toList();
+
+        // wrap with correct pagination metadata
+        return new PageImpl<>(userDtoList, pageable, idPage.getTotalElements());
     }
 
     @Transactional(readOnly = true)
@@ -72,8 +98,8 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", id));
 
         if (StringUtils.hasText(request.getFirstName())) user.setFirstName(request.getFirstName());
-        if (StringUtils.hasText(request.getLastName()))  user.setLastName(request.getLastName());
-        if (request.getIsActive() != null)               user.setIsActive(request.getIsActive());
+        if (StringUtils.hasText(request.getLastName())) user.setLastName(request.getLastName());
+        if (request.getIsActive() != null) user.setIsActive(request.getIsActive());
 
         user = userRepository.save(user);
         return userMapper.toDto(userRepository.findByIdWithRolesAndPermissions(user.getId()).orElseThrow());
