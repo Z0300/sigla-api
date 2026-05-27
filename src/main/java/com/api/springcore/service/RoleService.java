@@ -36,6 +36,8 @@ public class RoleService {
     private final RoleMapper roleMapper;
     private final PermissionResolver permissionResolver;
 
+    private static final List<String> SYSTEM_ROLES    = List.of("SUPER_ADMIN", "ADMIN", "USER");
+
     @Transactional(readOnly = true)
     public Page<DomainResponse.RoleDto> getAllRoles(String searchTerm, Pageable pageable) {
         Page<Long> idPage = roleRepository.findIdsBySearch(searchTerm, pageable);
@@ -105,9 +107,11 @@ public class RoleService {
     public void deleteRole(Long id) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", id));
-        if (List.of("SUPER_ADMIN", "USER").contains(role.getName())) {
+
+        if (SYSTEM_ROLES.contains(role.getName())) {
             throw new BadRequestException("Cannot delete system role: " + role.getName());
         }
+
         roleRepository.deleteById(id);
         log.info("Role deleted: {} ({})", role.getName(), id);
     }
