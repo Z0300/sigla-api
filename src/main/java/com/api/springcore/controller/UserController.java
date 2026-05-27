@@ -28,8 +28,6 @@ public class UserController {
 
     private final UserService userService;
 
-    // ── Profile (any authenticated user) ─────────────────────────────────────
-
     @GetMapping("/me")
     @Operation(summary = "Get current user's profile")
     @PreAuthorize("hasAuthority('profile:read')")
@@ -51,8 +49,6 @@ public class UserController {
                 .data(userService.updateUser(principal.id(), request))
                 .build());
     }
-
-    // ── Admin user management ─────────────────────────────────────────────────
 
     @GetMapping
     @Operation(summary = "List all users (paginated, searchable)")
@@ -115,8 +111,6 @@ public class UserController {
                 .message("User deleted")
                 .build());
     }
-
-    // ── Role assignment ───────────────────────────────────────────────────────
 
     @PutMapping("/{id}/roles")
     @Operation(summary = "Replace all roles for a user")
