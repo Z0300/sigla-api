@@ -123,6 +123,10 @@ public class AuthService {
             throw new BadRequestException("Current password is incorrect");
         }
 
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new BadRequestException("New password must be different from your current password");
+        }
+
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
         refreshTokenRepository.revokeAllByUserId(userId);
