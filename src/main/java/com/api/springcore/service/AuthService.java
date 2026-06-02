@@ -9,27 +9,17 @@ import com.api.springcore.exception.BadRequestException;
 import com.api.springcore.exception.DuplicateResourceException;
 import com.api.springcore.exception.ResourceNotFoundException;
 import com.api.springcore.exception.UnauthorizedException;
+import com.api.springcore.helper.TokenResolver;
 import com.api.springcore.repository.RefreshTokenRepository;
 import com.api.springcore.repository.RoleRepository;
 import com.api.springcore.repository.UserRepository;
-import com.api.springcore.security.JwtService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -40,11 +30,8 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
     private final AuthenticationManager authManager;
-
-    @Value("${spring.jwt.refresh-token-expiration-ms}")
-    private long refreshTokenExpirationMs;
+    private final TokenResolver tokenResolver;
 
     @Transactional
     public DomainResponse.TokenDto register(AuthRequest.Register request) {
@@ -67,7 +54,7 @@ public class AuthService {
 
         user = userRepository.save(user);
         log.info("User registered: {}", user.getEmail());
-        return buildTokenResponse(user);
+        return tokenResolver.buildTokenResponse(user);
     }
 
     @Transactional
@@ -83,18 +70,17 @@ public class AuthService {
             throw new UnauthorizedException("Account is disabled");
         }
 
-        return buildTokenResponse(user);
+        return tokenResolver.buildTokenResponse(user);
     }
 
     @Transactional
     public DomainResponse.TokenDto refreshToken(String rawRefreshToken) {
-        String tokenHash = hashToken(rawRefreshToken);
+        String tokenHash = tokenResolver.hashToken(rawRefreshToken);
 
         RefreshToken stored = refreshTokenRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
 
         if (!stored.isValid()) {
-            // Token reuse detection — revoke all tokens for safety
             refreshTokenRepository.revokeAllByUserId(stored.getUser().getId());
             throw new UnauthorizedException("Refresh token is expired or revoked");
         }
@@ -105,7 +91,8 @@ public class AuthService {
         User user = userRepository.findByIdWithRolesAndPermissions(stored.getUser().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", stored.getUser().getId()));
 
-        return buildTokenResponse(user);
+
+        return tokenResolver.buildTokenResponse(user);
     }
 
     @Transactional
@@ -133,50 +120,4 @@ public class AuthService {
         log.info("Password changed for user {}", userId);
     }
 
-    // ── Private helpers ──────────────────────────────────────────────────────
-
-    private DomainResponse.TokenDto buildTokenResponse(User user) {
-        Set<String> roles = user.getRoles().stream()
-                .map(Role::getName).collect(Collectors.toSet());
-        Set<String> permissions = user.getAllPermissions();
-
-        String accessToken = jwtService.generateAccessToken(
-                user.getId(), user.getEmail(), roles, permissions);
-        String rawRefresh  = UUID.randomUUID().toString();
-        String refreshHash = hashToken(rawRefresh);
-
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
-                .tokenHash(refreshHash)
-                .expiresAt(LocalDateTime.now().plusSeconds(refreshTokenExpirationMs / 1000))
-                .build();
-        refreshTokenRepository.save(refreshToken);
-
-        DomainResponse.UserSummaryDto userSummary = DomainResponse.UserSummaryDto.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .isActive(user.getIsActive())
-                .createdAt(user.getCreatedAt())
-                .build();
-
-        return DomainResponse.TokenDto.builder()
-                .accessToken(accessToken)
-                .refreshToken(rawRefresh)
-                .tokenType("Bearer")
-                .expiresIn(jwtService.getAccessTokenExpirationMs() / 1000)
-                .user(userSummary)
-                .build();
-    }
-
-    private String hashToken(String token) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
-    }
 }
