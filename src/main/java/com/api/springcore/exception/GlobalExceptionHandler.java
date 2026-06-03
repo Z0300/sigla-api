@@ -4,12 +4,15 @@ import com.api.springcore.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -44,6 +47,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.FORBIDDEN, ex.getMessage(), "FORBIDDEN");
     }
 
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<ApiResponse.Error> handleAuthorizationDenied(AuthorizationDeniedException ex) {
+        return error(HttpStatus.FORBIDDEN, "Access denied", "FORBIDDEN");
+    }
+
+    // Legacy fallback - Spring Security 7 throws AuthorizationDeniedException instead
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse.Error> handleAccessDenied(AccessDeniedException ex) {
         return error(HttpStatus.FORBIDDEN, "Access denied", "FORBIDDEN");
@@ -54,19 +63,15 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.UNAUTHORIZED, "Invalid email or password", "INVALID_CREDENTIALS");
     }
 
-    @ExceptionHandler(UsernameNotFoundException.class)
-    public ResponseEntity<ApiResponse.Error> handleUsernameNotFound(UsernameNotFoundException ex) {
-        return error(HttpStatus.UNAUTHORIZED, "Invalid email or password", "INVALID_CREDENTIALS");
-    }
-
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ApiResponse.Error> handleAuthentication(AuthenticationException ex) {
-        return error(HttpStatus.UNAUTHORIZED, "Invalid email or password", "INVALID_CREDENTIALS");
-    }
-
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<ApiResponse.Error> handleDisabled(DisabledException ex) {
         return error(HttpStatus.FORBIDDEN, "Account is disabled", "ACCOUNT_DISABLED");
+    }
+
+    // Catches remaining AuthenticationExceptions (including UsernameNotFoundException)
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiResponse.Error> handleAuthentication(AuthenticationException ex) {
+        return error(HttpStatus.UNAUTHORIZED, "Invalid email or password", "INVALID_CREDENTIALS");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -75,14 +80,14 @@ public class GlobalExceptionHandler {
         for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
             fieldErrors.put(fe.getField(), fe.getDefaultMessage());
         }
-        ApiResponse.Error body = ApiResponse.Error.builder()
-                .success(false)
-                .message("Validation failed")
-                .errorCode("VALIDATION_ERROR")
-                .details(fieldErrors)
-                .timestamp(LocalDateTime.now())
-                .build();
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(body);
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(
+                ApiResponse.Error.builder()
+                        .success(false)
+                        .message("Validation failed")
+                        .errorCode("VALIDATION_ERROR")
+                        .details(fieldErrors)
+                        .timestamp(LocalDateTime.now())
+                        .build());
     }
 
     @ExceptionHandler(Exception.class)
