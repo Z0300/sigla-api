@@ -63,7 +63,7 @@ public class User {
     @Builder.Default
     private Set<SocialAccount> socialAccounts = new HashSet<>();
 
-    // Convenience helper
+
     public void addRole(Role role) {
         roles.add(role);
     }
@@ -72,7 +72,6 @@ public class User {
         roles.remove(role);
     }
 
-    /** Collects all permission names from all assigned roles */
     public Set<String> getAllPermissions() {
         Set<String> perms = new HashSet<>();
         for (Role role : roles) {

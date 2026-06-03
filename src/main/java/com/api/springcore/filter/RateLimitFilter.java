@@ -18,10 +18,20 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class RateLimitFilter extends OncePerRequestFilter {
+
+    private static final List<String> EXCLUDED_PATHS = List.of(
+            "/swagger-ui",
+            "/swagger-ui.html",
+            "/v3/api-docs",
+            "/swagger-resources",
+            "/webjars",
+            "/actuator/health"
+    );
 
     private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
 
@@ -68,6 +78,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/actuator") || path.startsWith("/health");
+        return EXCLUDED_PATHS.stream().anyMatch(path::startsWith);
     }
 }
