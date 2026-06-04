@@ -17,4 +17,17 @@ public class EventResponse {
         private String status;
         private LocalDateTime createdAt;
     }
+
+    @Data
+    @Builder
+    public static class toDto {
+        private Long id;
+        private String title;
+        private String description;
+        private String venue;
+        private LocalDateTime startDate;
+        private LocalDateTime endDate;
+        private Integer capacity;
+        private String status;
+    }
 }

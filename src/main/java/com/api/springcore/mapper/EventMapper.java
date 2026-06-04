@@ -14,4 +14,17 @@ public class EventMapper {
                 .createdAt(event.getCreatedAt())
                 .build();
     }
+
+    public EventResponse.toDto toDto(Event event) {
+        return EventResponse.toDto.builder()
+                .id(event.getId())
+                .title(event.getTitle())
+                .description(event.getDescription())
+                .venue(event.getVenue())
+                .startDate(event.getStartDate())
+                .endDate(event.getEndDate())
+                .capacity(event.getCapacity())
+                .status(event.getStatus())
+                .build();
+    }
 }
