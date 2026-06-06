@@ -14,9 +14,10 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("SELECT e.id FROM Event e WHERE " +
             "(:searchTerm IS NULL OR " +
-            "LOWER(e.title)     LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-            "LOWER(e.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
-            "AND (:status IS NULL OR e.status = :status))")
+            "  LOWER(e.title)       LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "  LOWER(e.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+            ") " +
+            "AND (:status IS NULL OR e.status = :status)")
     Page<Long> findIdsBySearch(@Param("searchTerm") String searchTerm,
                                @Param("status") String status,
                                Pageable pageable);

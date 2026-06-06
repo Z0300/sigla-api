@@ -11,7 +11,7 @@ public class EventResponse {
 
     @Data
     @Builder
-    public static class CreateDto {
+    public static class toSimpleDto {
         private Long id;
         private String title;
         private String status;
