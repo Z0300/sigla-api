@@ -6,8 +6,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class EventMapper {
-    public EventResponse.CreateDto newEventDto(Event event) {
-        return EventResponse.CreateDto.builder()
+    public EventResponse.toSimpleDto toSimpleDto(Event event) {
+        return EventResponse.toSimpleDto.builder()
                 .id(event.getId())
                 .title(event.getTitle())
                 .status(event.getStatus())

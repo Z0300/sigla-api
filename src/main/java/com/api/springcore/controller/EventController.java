@@ -28,7 +28,7 @@ public class EventController {
     @GetMapping
     @PreAuthorize("hasAuthority('events:read')")
     @Operation(summary = "List all events")
-    public ResponseEntity<ApiResponse.Success<List<EventResponse.toDto>>> listPermissions(
+    public ResponseEntity<ApiResponse.Success<List<EventResponse.toDto>>> listEvents(
             @RequestParam(required = false) String searchTerm,
             @RequestParam(required = false) String status,
             @PageableDefault(size = 20) Pageable pageable
@@ -45,15 +45,52 @@ public class EventController {
                 .build());
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('events:read')")
+    @Operation(summary = "Get an event by ID")
+    public ResponseEntity<ApiResponse.Success<EventResponse.toDto>> listEvent(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.Success.<EventResponse.toDto>builder()
+                .data(eventService.getPermission(id))
+                .build());
+    }
+
     @PostMapping
     @PreAuthorize("hasAuthority('events:create')")
     @Operation(summary = "Create a new event")
-    public ResponseEntity<ApiResponse.Success<EventResponse.CreateDto>> createPermission(
+    public ResponseEntity<ApiResponse.Success<EventResponse.toSimpleDto>> createEvent(
             @Valid @RequestBody EventRequest.Create request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.Success.<EventResponse.CreateDto>builder()
+                ApiResponse.Success.<EventResponse.toSimpleDto>builder()
                         .message("Event created")
                         .data(eventService.create(request))
                         .build());
     }
+
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('events:update')")
+    @Operation(summary = "Update an event")
+    public ResponseEntity<ApiResponse.Success<EventResponse.toSimpleDto>> updateEvent(
+            @PathVariable Long id,
+            @Valid @RequestBody EventRequest.Update request) {
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(
+                ApiResponse.Success.<EventResponse.toSimpleDto>builder()
+                        .message("Event updated")
+                        .data(eventService.updateEvent(id, request))
+                        .build());
+    }
+
+    @PatchMapping("/{id}/{newStatus}")
+    @PreAuthorize("hasAuthority('events:update')")
+    @Operation(summary = "Update event status")
+    public ResponseEntity<ApiResponse.Success<EventResponse.toSimpleDto>> updateEventStatus(
+            @PathVariable Long id,
+            @PathVariable String newStatus) {
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(
+                ApiResponse.Success.<EventResponse.toSimpleDto>builder()
+                        .message("Event updated")
+                        .data(eventService.transitionStatus(id, newStatus))
+                        .build());
+    }
+
 }

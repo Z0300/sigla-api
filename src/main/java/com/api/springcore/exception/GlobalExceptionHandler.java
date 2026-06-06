@@ -13,6 +13,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -68,7 +69,6 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.FORBIDDEN, "Account is disabled", "ACCOUNT_DISABLED");
     }
 
-    // Catches remaining AuthenticationExceptions (including UsernameNotFoundException)
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiResponse.Error> handleAuthentication(AuthenticationException ex) {
         return error(HttpStatus.UNAUTHORIZED, "Invalid email or password", "INVALID_CREDENTIALS");
@@ -94,6 +94,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse.Error> handleGeneral(Exception ex) {
         log.error("Unhandled exception", ex);
         return error(HttpStatus.INTERNAL_SERVER_ERROR, "An internal error occurred", "INTERNAL_ERROR");
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse.Error> handleNoResourceFound(NoResourceFoundException ex) {
+        return error(HttpStatus.NOT_FOUND, "Endpoint not found: " + ex.getResourcePath(), "NOT_FOUND");
     }
 
     private ResponseEntity<ApiResponse.Error> error(HttpStatus status, String message, String code) {

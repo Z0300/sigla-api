@@ -25,14 +25,41 @@ public class EventRequest {
         @Size(max = 255)
         String venue;
 
-        @NotNull
+        @NotNull(message = "Start date is required")
         LocalDateTime startDate;
 
-        @NotNull
+        @NotNull(message = "End date is required")
         LocalDateTime endDate;
 
         @Builder.Default
         Integer capacity = 0;
+
+        String description;
+    }
+
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Update {
+        @NotBlank(message = "Title is required")
+        @Size(max = 255)
+        String title;
+
+        @NotBlank(message = "Venue is required")
+        @Size(max = 255)
+        String venue;
+
+        @NotNull(message = "Start date is required")
+        LocalDateTime startDate;
+
+        @NotNull(message = "End date is required")
+        LocalDateTime endDate;
+
+        @Builder.Default
+        Integer capacity = 0;
+
         String description;
     }
 }
