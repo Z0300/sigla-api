@@ -1,6 +1,8 @@
 package com.api.springcore.repository;
 
 import com.api.springcore.entity.Attendee;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,6 +18,18 @@ public interface AttendeeRepository extends JpaRepository<Attendee, Long> {
     Optional<Attendee> findByUserIdAndEventId(Long userId, Long eventId);
 
     List<Attendee> findAllByEventId(Long eventId);
+
+    @Query("""
+            SELECT a FROM Attendee a
+            JOIN FETCH a.user
+            WHERE a.event.id = :eventId
+            AND (:status IS NULL OR a.status = :status)
+            """)
+    Page<Attendee> findByEventIdAndStatus(
+            @Param("eventId") Long eventId,
+            @Param("status") String status,
+            Pageable pageable
+    );
 
     List<Attendee> findAllByEventIdAndStatus(Long eventId, String status);
 
