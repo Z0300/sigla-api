@@ -57,6 +57,31 @@ public class EventService {
         return new PageImpl<>(summaryDtoList, pageable, idPage.getTotalElements());
     }
 
+    @Transactional(readOnly = true)
+    public Page<EventResponse.toPublicDto> getPublicEvents(String searchTerm, String status, Pageable pageable) {
+        Page<Long> ids = eventRepository.findPublicEventIds(searchTerm, status, pageable);
+
+        if (ids.isEmpty()) return Page.empty(pageable);
+
+        List<Event> users = eventRepository.findAllByIds(ids.getContent());
+
+        Map<Long, Event> eventMap = users.stream()
+                .collect(Collectors.toMap(Event::getId, u -> u));
+
+        List<EventResponse.toDto> summaryDtoList = ids.getContent().stream()
+                .map(eventMap::get)
+                .filter(Objects::nonNull)
+                .map(eventMapper::toDto)
+                .toList();
+
+        log.info("Returning {} public event's DTO(s)", summaryDtoList.size());
+
+        return ids.map(id -> {
+            Event event = eventRepository.findById(id).orElseThrow();
+            long registeredCount = attendeeRepository.countByEventId(id);
+            return eventMapper.toPublicDto(event, registeredCount);
+        });
+    }
 
     @Transactional(readOnly = true)
     public EventResponse.toDto getPermission(Long id) {

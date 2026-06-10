@@ -45,6 +45,26 @@ public class EventController {
                 .build());
     }
 
+    @GetMapping("/public")
+    @PreAuthorize("hasAuthority('events:read')")
+    @Operation(summary = "List all events")
+    public ResponseEntity<ApiResponse.Success<List<EventResponse.toPublicDto>>> publicEvents(
+            @RequestParam(required = false) String searchTerm,
+            @RequestParam(required = false) String status,
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        Page<EventResponse.toPublicDto> page = eventService.getPublicEvents(searchTerm, status, pageable);
+        return ResponseEntity.ok(ApiResponse.Success.<List<EventResponse.toPublicDto>>builder()
+                .data(page.getContent())
+                .meta(ApiResponse.Meta.builder()
+                        .page(page.getNumber())
+                        .size(page.getSize())
+                        .totalElements(page.getTotalElements())
+                        .totalPages(page.getTotalPages())
+                        .build())
+                .build());
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('events:read')")
     @Operation(summary = "Get an event by ID")
