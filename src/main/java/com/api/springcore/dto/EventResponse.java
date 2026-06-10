@@ -30,4 +30,18 @@ public class EventResponse {
         private Integer capacity;
         private String status;
     }
+
+    @Data
+    @Builder
+    public static class toPublicDto {
+        private Long id;
+        private String title;
+        private String description;
+        private String venue;
+        private LocalDateTime startDate;
+        private LocalDateTime endDate;
+        private Integer capacity;
+        private String status;
+        private long registeredCount;
+    }
 }

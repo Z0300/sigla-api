@@ -2,6 +2,7 @@ package com.api.springcore.service;
 
 import com.api.springcore.dto.AuthRequest;
 import com.api.springcore.dto.DomainResponse;
+import com.api.springcore.entity.Permission;
 import com.api.springcore.entity.RefreshToken;
 import com.api.springcore.entity.Role;
 import com.api.springcore.entity.User;
@@ -10,6 +11,7 @@ import com.api.springcore.exception.DuplicateResourceException;
 import com.api.springcore.exception.ResourceNotFoundException;
 import com.api.springcore.exception.UnauthorizedException;
 import com.api.springcore.helper.TokenResolver;
+import com.api.springcore.repository.PermissionRepository;
 import com.api.springcore.repository.RefreshTokenRepository;
 import com.api.springcore.repository.RoleRepository;
 import com.api.springcore.repository.UserRepository;
@@ -25,6 +27,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+    private final PermissionRepository permissionRepository;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -41,6 +44,11 @@ public class AuthService {
 
         Role userRole = roleRepository.findByName("USER")
                 .orElseThrow(() -> new ResourceNotFoundException("Default role USER not found"));
+
+        Permission viewEvents = permissionRepository.findByName("events:read")
+                .orElseThrow(() -> new ResourceNotFoundException("Permission events:read not found"));
+
+        userRole.addPermission(viewEvents);
 
         User user = User.builder()
                 .email(request.getEmail().toLowerCase())

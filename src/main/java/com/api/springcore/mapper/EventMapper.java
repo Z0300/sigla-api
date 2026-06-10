@@ -27,4 +27,18 @@ public class EventMapper {
                 .status(event.getStatus())
                 .build();
     }
+
+    public EventResponse.toPublicDto toPublicDto(Event event, long registeredCount) {
+        return EventResponse.toPublicDto.builder()
+                .id(event.getId())
+                .title(event.getTitle())
+                .description(event.getDescription())
+                .venue(event.getVenue())
+                .startDate(event.getStartDate())
+                .endDate(event.getEndDate())
+                .capacity(event.getCapacity())
+                .status(event.getStatus())
+                .registeredCount(registeredCount)
+                .build();
+    }
 }
