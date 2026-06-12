@@ -11,7 +11,7 @@ spring:
     open-in-view: false
 
 rate-limit:
-  capacity: 5
+  capacity: 100
   refill-tokens: 100
   refill-duration-minutes: 1
   cache-expire-hours: 2

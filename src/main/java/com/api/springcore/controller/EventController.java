@@ -68,10 +68,20 @@ public class EventController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('events:read')")
     @Operation(summary = "Get an event by ID")
-    public ResponseEntity<ApiResponse.Success<EventResponse.toDto>> listEvent(
+    public ResponseEntity<ApiResponse.Success<EventResponse.toDto>> getEvent(
             @PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.Success.<EventResponse.toDto>builder()
-                .data(eventService.getPermission(id))
+                .data(eventService.getEvent(id))
+                .build());
+    }
+
+    @GetMapping("/withSession/{id}")
+    @PreAuthorize("hasAuthority('events:read')")
+    @Operation(summary = "Get an event by ID")
+    public ResponseEntity<ApiResponse.Success<EventResponse.toPublicSessionDto>> getEventWithSessions(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.Success.<EventResponse.toPublicSessionDto>builder()
+                .data(eventService.getEventWithSession(id))
                 .build());
     }
 

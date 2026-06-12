@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Set;
 
@@ -36,21 +37,28 @@ public class AttendeeService {
     private final AttendeeMapper attendeeMapper;
     private final NotificationService notificationService;
 
-    // Events must be in one of these to allow registration
     private static final Set<String> REGISTERABLE_STATUSES = Set.of("published", "ongoing");
-
 
     @Transactional
     public AttendeeResponse.Simple register(Long eventId, Long currentUserId) {
         Event event = findEventOrThrow(eventId);
-        User user  = findUserOrThrow(currentUserId);
+        User user = findUserOrThrow(currentUserId);
 
         validateRegisterable(event);
-        validateNotAlreadyRegistered(currentUserId, eventId);
         validateCapacity(event);
 
-        Attendee attendee = saveAttendee(user, event);
-        QrToken  qrToken  = generateQrToken(attendee, event);
+        Attendee attendee = attendeeRepository.findByUserIdAndEventId(currentUserId, eventId)
+                .map(existing -> {
+                    if (!"cancelled".equals(existing.getStatus())) {
+                        throw new DuplicateResourceException("User is already registered for this event");
+                    }
+                    existing.setStatus("registered");
+                    existing.setRegisteredAt(LocalDateTime.now());
+                    return attendeeRepository.save(existing);
+                })
+                .orElseGet(() -> saveAttendee(user, event));
+
+        QrToken qrToken = generateQrToken(attendee, event);
 
         notificationService.notifyRegistrationConfirmed(attendee, event);
 
@@ -61,7 +69,7 @@ public class AttendeeService {
 
     @Transactional
     public AttendeeResponse.Simple registerUser(Long eventId, Long targetUserId, Long currentUserId) {
-        Event event      = findEventOrThrow(eventId);
+        Event event = findEventOrThrow(eventId);
         validateOrganizerOrAdmin(event, currentUserId);
 
         User targetUser = findUserOrThrow(targetUserId);
@@ -71,7 +79,7 @@ public class AttendeeService {
         validateCapacity(event);
 
         Attendee attendee = saveAttendee(targetUser, event);
-        QrToken  qrToken  = generateQrToken(attendee, event);
+        QrToken qrToken = generateQrToken(attendee, event);
 
         notificationService.notifyRegistrationConfirmed(attendee, event);
 
@@ -83,13 +91,13 @@ public class AttendeeService {
 
     @Transactional
     public AttendeeResponse.Simple cancelRegistration(Long eventId, Long attendeeId, Long currentUserId) {
-        Attendee attendee = attendeeRepository.findByUserIdAndEventId(attendeeId, eventId)
+        Attendee attendee = attendeeRepository.findByUserIdAndEventId(currentUserId, eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Registration not found"));
 
         Event event = attendee.getEvent();
 
         // Only the attendee themselves or organizer/admin can cancel
-        boolean isSelf      = attendee.getUser().getId().equals(currentUserId);
+        boolean isSelf = attendee.getUser().getId().equals(currentUserId);
         boolean isOrganizer = event.getOrganizer().getId().equals(currentUserId);
         if (!isSelf && !isOrganizer) {
             throw new ForbiddenException("You cannot cancel this registration");
@@ -162,14 +170,19 @@ public class AttendeeService {
     }
 
     private void validateNotAlreadyRegistered(Long userId, Long eventId) {
-        if (attendeeRepository.existsByUserIdAndEventId(userId, eventId)) {
+        boolean activeRegistration = attendeeRepository
+                .findByUserIdAndEventId(userId, eventId)
+                .map(a -> !"cancelled".equals(a.getStatus()))
+                .orElse(false);
+
+        if (activeRegistration) {
             throw new DuplicateResourceException("User is already registered for this event");
         }
     }
 
     private void validateCapacity(Event event) {
         if (event.getCapacity() != null) {
-            long registered = attendeeRepository.countByEventId(event.getId());
+            long registered = attendeeRepository.countByEventIdAndStatusNot(event.getId(), "cancelled");
             if (registered >= event.getCapacity()) {
                 throw new BadRequestException("Event is at full capacity");
             }
@@ -206,4 +219,6 @@ public class AttendeeService {
 
         return qrTokenRepository.save(qrToken);
     }
+
+
 }

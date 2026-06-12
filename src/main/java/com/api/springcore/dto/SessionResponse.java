@@ -1,8 +1,19 @@
 package com.api.springcore.dto;
 
+import lombok.Builder;
+import lombok.Data;
+
 import java.time.LocalDateTime;
 
 public class SessionResponse {
+    public record Summary(
+            Long id,
+            String title,
+            String room,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            Integer capacity
+    ) {}
     public record Simple(
             Long id,
             Long eventId,
