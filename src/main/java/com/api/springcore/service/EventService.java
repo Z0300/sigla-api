@@ -63,30 +63,44 @@ public class EventService {
 
         if (ids.isEmpty()) return Page.empty(pageable);
 
-        List<Event> users = eventRepository.findAllByIds(ids.getContent());
+        List<Event> events = eventRepository.findAllByIds(ids.getContent());
 
-        Map<Long, Event> eventMap = users.stream()
-                .collect(Collectors.toMap(Event::getId, u -> u));
+        Map<Long, Long> countMap = attendeeRepository.countGroupedByEventIds(ids.getContent())
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
 
-        List<EventResponse.toDto> summaryDtoList = ids.getContent().stream()
+        Map<Long, Event> eventMap = events.stream()
+                .collect(Collectors.toMap(Event::getId, e -> e));
+
+        List<EventResponse.toPublicDto> eventSummary = ids.getContent().stream()
                 .map(eventMap::get)
                 .filter(Objects::nonNull)
-                .map(eventMapper::toDto)
+                .map(event -> eventMapper.toPublicDto(event, countMap.getOrDefault(event.getId(), 0L)))
                 .toList();
 
-        log.info("Returning {} public event's DTO(s)", summaryDtoList.size());
+        log.info("Returning {} public event's DTO(s)", eventSummary.size());
 
-        return ids.map(id -> {
-            Event event = eventRepository.findById(id).orElseThrow();
-            long registeredCount = attendeeRepository.countByEventId(id);
-            return eventMapper.toPublicDto(event, registeredCount);
-        });
+        return new PageImpl<>(eventSummary, pageable, ids.getTotalElements());
     }
 
     @Transactional(readOnly = true)
-    public EventResponse.toDto getPermission(Long id) {
-        return eventMapper.toDto(eventRepository.findById(id)
+    public EventResponse.toDto getEvent(Long id) {
+        return eventMapper.toDto(eventRepository.findByIdWithSessions(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Event", id)));
+    }
+
+
+    @Transactional(readOnly = true)
+    public EventResponse.toPublicSessionDto getEventWithSession(Long id) {
+        Event event = eventRepository.findByIdWithSessions(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Event", id));
+
+        long registeredCount = attendeeRepository.countByEventIdAndStatusNot(id, "cancelled");
+
+        return eventMapper.toPublicWithSessionDto(event, registeredCount);
     }
 
     @Transactional

@@ -8,10 +8,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public interface AttendeeRepository extends JpaRepository<Attendee, Long> {
     long countByEventId(Long eventId);
+
+    long countByEventIdAndStatusNot(Long eventId, String status);
 
     boolean existsByUserIdAndEventId(Long userId, Long eventId);
 
@@ -43,4 +47,13 @@ public interface AttendeeRepository extends JpaRepository<Attendee, Long> {
               )
             """)
     List<Attendee> findNoShowsByEventId(@Param("eventId") Long eventId);
+
+    @Query("""
+                SELECT a.event.id, COUNT(a)
+                FROM Attendee a
+                WHERE a.event.id IN :eventIds
+                GROUP BY a.event.id
+            """)
+    List<Object[]> countGroupedByEventIds(@Param("eventIds") List<Long> eventIds);
+
 }

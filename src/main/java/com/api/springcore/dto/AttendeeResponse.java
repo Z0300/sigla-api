@@ -12,7 +12,8 @@ public class AttendeeResponse {
             String userEmail,
             String status,
             String qrToken,
-            LocalDateTime registeredAt
+            LocalDateTime registeredAt,
+            long registeredCount
     ) {}
 
     public record Summary(
