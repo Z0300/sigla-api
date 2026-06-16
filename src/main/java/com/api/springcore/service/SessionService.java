@@ -9,6 +9,7 @@ import com.api.springcore.exception.BadRequestException;
 import com.api.springcore.exception.ForbiddenException;
 import com.api.springcore.exception.ResourceNotFoundException;
 import com.api.springcore.mapper.SessionMapper;
+import com.api.springcore.repository.CheckInRepository;
 import com.api.springcore.repository.EventRepository;
 import com.api.springcore.repository.SessionQrRepository;
 import com.api.springcore.repository.SessionRepository;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Set;
@@ -28,10 +30,11 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class SessionService {
 
-    private final SessionRepository     sessionRepository;
-    private final SessionQrRepository   sessionQrRepository;
-    private final EventRepository       eventRepository;
-    private final SessionMapper         sessionMapper;
+    private final SessionRepository sessionRepository;
+    private final SessionQrRepository sessionQrRepository;
+    private final EventRepository eventRepository;
+    private final SessionMapper sessionMapper;
+    private final CheckInRepository checkInRepository;
 
     private static final Set<String> EDITABLE_EVENT_STATUSES = Set.of("draft", "published");
 
@@ -60,6 +63,27 @@ public class SessionService {
         return sessionMapper.toSimpleDto(session, 0L);
     }
 
+
+    @Transactional(readOnly = true)
+    public List<SessionResponse.CheckInEntry> getSessionCheckIns(
+            Long eventId, Long sessionId, Long currentUserId) {
+
+        Session session = findSessionOrThrow(sessionId);
+        verifySessionBelongsToEvent(session, eventId);
+        validateEventOwnership(session.getEvent(), currentUserId);
+
+        return checkInRepository.findAllBySessionIdWithAttendee(sessionId)
+                .stream()
+                .map(c -> new SessionResponse.CheckInEntry(
+                        c.getId(),
+                        c.getAttendee().getId(),
+                        c.getAttendee().getUser().getFirstName() + " " + c.getAttendee().getUser().getLastName(),
+                        c.getAttendee().getUser().getEmail(),
+                        c.getMethod(),
+                        c.getCheckedInAt()
+                ))
+                .toList();
+    }
 
     @Transactional(readOnly = true)
     public List<SessionResponse.Simple> getSessionsByEvent(Long eventId) {
@@ -96,7 +120,7 @@ public class SessionService {
 
     @Transactional
     public SessionResponse.Simple updateSession(Long eventId, Long sessionId,
-                                           SessionRequest.Update request, Long currentUserId) {
+                                                SessionRequest.Update request, Long currentUserId) {
         Session session = findSessionOrThrow(sessionId);
         verifySessionBelongsToEvent(session, eventId);
 
@@ -105,16 +129,16 @@ public class SessionService {
         validateEventEditable(event);
 
         LocalDateTime effectiveStart = request.startTime() != null ? request.startTime() : session.getStartTime();
-        LocalDateTime effectiveEnd   = request.endTime()   != null ? request.endTime()   : session.getEndTime();
-        String effectiveRoom         = request.room()      != null ? request.room()       : session.getRoom();
+        LocalDateTime effectiveEnd = request.endTime() != null ? request.endTime() : session.getEndTime();
+        String effectiveRoom = request.room() != null ? request.room() : session.getRoom();
 
         validateSessionTimes(effectiveStart, effectiveEnd, event);
         validateNoTimeConflict(eventId, effectiveRoom, effectiveStart, effectiveEnd, sessionId);
 
-        if (request.title()    != null) session.setTitle(request.title());
-        if (request.room()     != null) session.setRoom(request.room());
+        if (request.title() != null) session.setTitle(request.title());
+        if (request.room() != null) session.setRoom(request.room());
         if (request.startTime() != null) session.setStartTime(request.startTime());
-        if (request.endTime()  != null) session.setEndTime(request.endTime());
+        if (request.endTime() != null) session.setEndTime(request.endTime());
         if (request.capacity() != null) {
             validateCapacityReduction(sessionId, request.capacity());
             session.setCapacity(request.capacity());
@@ -212,15 +236,22 @@ public class SessionService {
         }
     }
 
+
     private void validateSessionTimes(LocalDateTime start, LocalDateTime end, Event event) {
         if (!end.isAfter(start)) {
             throw new BadRequestException("End time must be after start time");
         }
-        if (start.isBefore(event.getStartDate())) {
-            throw new BadRequestException("Session cannot start before the event starts");
+
+        LocalDateTime eventStart = event.getStartDate().toLocalDate().atStartOfDay();
+        LocalDateTime eventEnd   = event.getEndDate().toLocalDate().atTime(LocalTime.MAX);
+
+        if (start.isBefore(eventStart)) {
+            throw new BadRequestException("Session cannot start before the event starts ("
+                    + event.getStartDate() + ")");
         }
-        if (end.isAfter(event.getEndDate())) {
-            throw new BadRequestException("Session cannot end after the event ends");
+        if (end.isAfter(eventEnd)) {
+            throw new BadRequestException("Session cannot end after the event ends ("
+                    + event.getEndDate() + ")");
         }
     }
 

@@ -1,6 +1,7 @@
 package com.api.springcore.controller;
 
 import com.api.springcore.dto.*;
+import com.api.springcore.security.CustomUserDetailsService;
 import com.api.springcore.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,6 +13,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,17 +26,16 @@ public class EventController {
 
     private final EventService eventService;
 
-
-    @GetMapping
+    @GetMapping("/public")
     @PreAuthorize("hasAuthority('events:read')")
     @Operation(summary = "List all events")
-    public ResponseEntity<ApiResponse.Success<List<EventResponse.toDto>>> listEvents(
+    public ResponseEntity<ApiResponse.Success<List<EventResponse.toPublicDto>>> publicEvents(
             @RequestParam(required = false) String searchTerm,
             @RequestParam(required = false) String status,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        Page<EventResponse.toDto> page = eventService.getEvents(searchTerm, status, pageable);
-        return ResponseEntity.ok(ApiResponse.Success.<List<EventResponse.toDto>>builder()
+        Page<EventResponse.toPublicDto> page = eventService.getPublicEvents(searchTerm, status, pageable);
+        return ResponseEntity.ok(ApiResponse.Success.<List<EventResponse.toPublicDto>>builder()
                 .data(page.getContent())
                 .meta(ApiResponse.Meta.builder()
                         .page(page.getNumber())
@@ -45,15 +46,16 @@ public class EventController {
                 .build());
     }
 
-    @GetMapping("/public")
+    @GetMapping
     @PreAuthorize("hasAuthority('events:read')")
     @Operation(summary = "List all events")
-    public ResponseEntity<ApiResponse.Success<List<EventResponse.toPublicDto>>> publicEvents(
+    public ResponseEntity<ApiResponse.Success<List<EventResponse.toPublicDto>>> getOrganizerEvents(
             @RequestParam(required = false) String searchTerm,
             @RequestParam(required = false) String status,
-            @PageableDefault(size = 20) Pageable pageable
+            @PageableDefault(size = 20) Pageable pageable,
+            @AuthenticationPrincipal CustomUserDetailsService.UserPrincipal principal
     ) {
-        Page<EventResponse.toPublicDto> page = eventService.getPublicEvents(searchTerm, status, pageable);
+        Page<EventResponse.toPublicDto> page = eventService.getOrganizerEvents(principal.id(), searchTerm, status, pageable);
         return ResponseEntity.ok(ApiResponse.Success.<List<EventResponse.toPublicDto>>builder()
                 .data(page.getContent())
                 .meta(ApiResponse.Meta.builder()

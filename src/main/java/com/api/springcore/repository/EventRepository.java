@@ -41,6 +41,20 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     );
 
     @Query("""
+            SELECT e.id FROM Event e
+            WHERE e.organizer.id = :organizerId
+            AND (:searchTerm IS NULL OR LOWER(e.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
+            AND (:status IS NULL OR e.status = :status)
+            ORDER BY e.startDate DESC
+            """)
+    Page<Long> findOrganizerEventIds(
+            @Param("organizerId") Long organizerId,
+            @Param("searchTerm") String searchTerm,
+            @Param("status") String status,
+            Pageable pageable
+    );
+
+    @Query("""
                 SELECT e
                 FROM Event e
                 LEFT JOIN FETCH e.sessions s

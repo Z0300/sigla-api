@@ -14,6 +14,14 @@ public class SessionResponse {
             LocalDateTime endTime,
             Integer capacity
     ) {}
+    public record CheckInEntry(
+            Long checkInId,
+            Long attendeeId,
+            String userFullName,
+            String userEmail,
+            String method,
+            LocalDateTime checkedInAt
+    ) {}
     public record Simple(
             Long id,
             Long eventId,
