@@ -1,5 +1,6 @@
 package com.api.springcore.repository;
 
+import com.api.springcore.entity.CheckIn;
 import com.api.springcore.entity.Session;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -37,4 +38,14 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
 
     @Query("SELECT s FROM Session s JOIN FETCH s.event WHERE s.id = :id")
     Optional<Session> findByIdWithEvent(@Param("id") Long id);
+
+
+    @Query("""
+        SELECT c FROM CheckIn c
+        JOIN FETCH c.attendee a
+        JOIN FETCH a.user u
+        WHERE c.session.id = :sessionId
+        ORDER BY c.checkedInAt ASC
+        """)
+    List<CheckIn> findAllBySessionIdWithAttendee(@Param("sessionId") Long sessionId);
 }

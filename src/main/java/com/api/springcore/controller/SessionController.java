@@ -120,4 +120,20 @@ public class SessionController {
                         .build()
         );
     }
+
+    @GetMapping("/{sessionId}/attendees")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse.Success<List<SessionResponse.CheckInEntry>>> getSessionCheckIns(
+            @PathVariable Long eventId,
+            @PathVariable Long sessionId,
+            @AuthenticationPrincipal CustomUserDetailsService.UserPrincipal currentUser) {
+
+        List<SessionResponse.CheckInEntry> checkIns =
+                sessionService.getSessionCheckIns(eventId, sessionId, currentUser.id());
+        return ResponseEntity.ok(
+                ApiResponse.Success.<List<SessionResponse.CheckInEntry>>builder()
+                        .data(checkIns)
+                        .build()
+        );
+    }
 }

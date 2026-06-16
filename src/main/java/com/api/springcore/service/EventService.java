@@ -87,6 +87,42 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
+    public Page<EventResponse.toPublicDto> getOrganizerEvents(
+            Long organizerId,
+            String searchTerm,
+            String status,
+            Pageable pageable) {
+
+        Page<Long> ids = eventRepository.findOrganizerEventIds(
+                organizerId, searchTerm, status, pageable);
+
+        if (ids.isEmpty()) return Page.empty(pageable);
+
+        List<Event> events = eventRepository.findAllByIds(ids.getContent());
+
+        Map<Long, Long> countMap = attendeeRepository.countGroupedByEventIds(ids.getContent())
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
+
+        Map<Long, Event> eventMap = events.stream()
+                .collect(Collectors.toMap(Event::getId, e -> e));
+
+        List<EventResponse.toPublicDto> eventSummary = ids.getContent().stream()
+                .map(eventMap::get)
+                .filter(Objects::nonNull)
+                .map(event -> eventMapper.toPublicDto(
+                        event, countMap.getOrDefault(event.getId(), 0L)))
+                .toList();
+
+        log.info("Returning {} organizer event DTO(s) for organizer {}", eventSummary.size(), organizerId);
+
+        return new PageImpl<>(eventSummary, pageable, ids.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
     public EventResponse.toDto getEvent(Long id) {
         return eventMapper.toDto(eventRepository.findByIdWithSessions(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Event", id)));
