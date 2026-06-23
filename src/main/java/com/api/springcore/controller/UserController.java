@@ -1,15 +1,16 @@
 package com.api.springcore.controller;
 
-import com.api.springcore.dto.ApiResponse;
-import com.api.springcore.dto.DomainResponse;
-import com.api.springcore.dto.UserRequest;
+import com.api.springcore.dto.*;
+import com.api.springcore.security.CustomUserDetailsService;
 import com.api.springcore.security.CustomUserDetailsService.UserPrincipal;
+import com.api.springcore.service.AttendeeService;
 import com.api.springcore.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final AttendeeService attendeeService;
 
     @GetMapping("/me")
     @Operation(summary = "Get current user's profile")
@@ -35,6 +37,27 @@ public class UserController {
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(ApiResponse.Success.<DomainResponse.UserDto>builder()
                 .data(userService.getUser(principal.id()))
+                .build());
+    }
+
+    @GetMapping("/me/tickets")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse.Success<List<AttendeeResponse.Ticket>>> getMyTickets(
+            @RequestParam(required = false) String status,
+            @PageableDefault(size = 20) Pageable pageable,
+            @AuthenticationPrincipal CustomUserDetailsService.UserPrincipal currentUser) {
+
+        Page<AttendeeResponse.Ticket> page =
+                attendeeService.getMyTickets(currentUser.id(), status, pageable);
+
+        return ResponseEntity.ok(ApiResponse.Success.<List<AttendeeResponse.Ticket>>builder()
+                .data(page.getContent())
+                .meta(ApiResponse.Meta.builder()
+                        .page(page.getNumber())
+                        .size(page.getSize())
+                        .totalElements(page.getTotalElements())
+                        .totalPages(page.getTotalPages())
+                        .build())
                 .build());
     }
 
