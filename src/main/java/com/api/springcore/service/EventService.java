@@ -36,7 +36,7 @@ public class EventService {
     private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
-    public Page<EventResponse.toDto> getEvents(String searchTerm, String status, Pageable pageable) {
+    public Page<EventResponse.toDto> getMyEvents(String searchTerm, String status, Pageable pageable) {
         Page<Long> idPage = eventRepository.findIdsBySearch(searchTerm, status, pageable);
 
         if (idPage.isEmpty()) return Page.empty(pageable);

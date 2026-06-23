@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -66,6 +67,22 @@ public class AttendeeService {
         return attendeeMapper.toSimpleDto(attendee, qrToken);
     }
 
+    @Transactional(readOnly = true)
+    public Page<AttendeeResponse.Ticket> getMyTickets(Long userId, String status, Pageable pageable) {
+        return attendeeRepository
+                .findByUserIdAndStatus(userId, status, pageable)
+                .map(a -> new AttendeeResponse.Ticket(
+                        a.getId(),
+                        a.getEvent().getId(),
+                        a.getEvent().getTitle(),
+                        a.getEvent().getVenue(),
+                        a.getEvent().getStatus(),
+                        a.getEvent().getStartDate(),
+                        a.getEvent().getEndDate(),
+                        a.getStatus(),
+                        a.getRegisteredAt()
+                ));
+    }
 
     @Transactional
     public AttendeeResponse.Simple registerUser(Long eventId, Long targetUserId, Long currentUserId) {

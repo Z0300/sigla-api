@@ -56,4 +56,18 @@ public interface AttendeeRepository extends JpaRepository<Attendee, Long> {
             """)
     List<Object[]> countGroupedByEventIds(@Param("eventIds") List<Long> eventIds);
 
+
+    @Query("""
+    SELECT a FROM Attendee a
+    JOIN FETCH a.event e
+    WHERE a.user.id = :userId
+    AND (:status IS NULL OR a.status = :status)
+    ORDER BY a.registeredAt DESC
+    """)
+    Page<Attendee> findByUserIdAndStatus(
+            @Param("userId") Long userId,
+            @Param("status") String status,
+            Pageable pageable
+    );
+
 }
