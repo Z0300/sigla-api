@@ -48,10 +48,12 @@ public class EventMapper {
         return EventResponse.toPublicSessionDto.builder()
                 .id(event.getId())
                 .title(event.getTitle())
+                .description(event.getDescription())
                 .venue(event.getVenue())
                 .startDate(event.getStartDate())
                 .endDate(event.getEndDate())
                 .capacity(event.getCapacity())
+                .status(event.getStatus())
                 .registeredCount(registeredCount)
                 .sessions(
                         event.getSessions().stream()
