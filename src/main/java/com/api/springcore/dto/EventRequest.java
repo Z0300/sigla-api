@@ -1,5 +1,6 @@
 package com.api.springcore.dto;
 
+import com.api.springcore.dto.validation.EndDateAfterStartDate;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -12,10 +13,12 @@ import java.time.LocalDateTime;
 
 
 public class EventRequest {
+
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @EndDateAfterStartDate
     public static class Create {
         @NotBlank(message = "Title is required")
         @Size(max = 255)
