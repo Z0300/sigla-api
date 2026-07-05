@@ -7,21 +7,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
     boolean existsByTitle(String title);
-
-    @Query("SELECT e.id FROM Event e WHERE " +
-            "(:searchTerm IS NULL OR " +
-            "  LOWER(e.title)       LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-            "  LOWER(e.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
-            ") " +
-            "AND (:status IS NULL OR e.status = :status)")
-    Page<Long> findIdsBySearch(@Param("searchTerm") String searchTerm,
-                               @Param("status") String status,
-                               Pageable pageable);
 
     @Query("SELECT e FROM Event e WHERE e.id IN :ids ORDER BY e.createdAt DESC")
     List<Event> findAllByIds(@Param("ids") List<Long> ids);
@@ -45,12 +36,16 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             WHERE e.organizer.id = :organizerId
             AND (:searchTerm IS NULL OR LOWER(e.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
             AND (:status IS NULL OR e.status = :status)
+            AND (:startDate IS NULL OR e.startDate >= :startDate)
+            AND (:endDate IS NULL OR e.endDate <= :endDate)
             ORDER BY e.startDate DESC
             """)
     Page<Long> findOrganizerEventIds(
             @Param("organizerId") Long organizerId,
             @Param("searchTerm") String searchTerm,
             @Param("status") String status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
             Pageable pageable
     );
 
@@ -62,4 +57,5 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                 WHERE e.id = :id
             """)
     Optional<Event> findByIdWithSessions(@Param("id") Long id);
+
 }
