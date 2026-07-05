@@ -10,12 +10,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -52,10 +54,12 @@ public class EventController {
     public ResponseEntity<ApiResponse.Success<List<EventResponse.toPublicDto>>> getOrganizerEvents(
             @RequestParam(required = false) String searchTerm,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @PageableDefault(size = 20) Pageable pageable,
             @AuthenticationPrincipal CustomUserDetailsService.UserPrincipal principal
     ) {
-        Page<EventResponse.toPublicDto> page = eventService.getOrganizerEvents(principal.id(), searchTerm, status, pageable);
+        Page<EventResponse.toPublicDto> page = eventService.getEvents(principal.id(), searchTerm, status, startDate, endDate, pageable);
         return ResponseEntity.ok(ApiResponse.Success.<List<EventResponse.toPublicDto>>builder()
                 .data(page.getContent())
                 .meta(ApiResponse.Meta.builder()

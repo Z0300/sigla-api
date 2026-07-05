@@ -19,6 +19,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,28 +38,6 @@ public class EventService {
     private final EventMapper eventMapper;
     private final SecurityUtils securityUtils;
     private final NotificationService notificationService;
-
-    @Transactional(readOnly = true)
-    public Page<EventResponse.toDto> getMyEvents(String searchTerm, String status, Pageable pageable) {
-        Page<Long> idPage = eventRepository.findIdsBySearch(searchTerm, status, pageable);
-
-        if (idPage.isEmpty()) return Page.empty(pageable);
-
-        List<Event> users = eventRepository.findAllByIds(idPage.getContent());
-
-        Map<Long, Event> eventMap = users.stream()
-                .collect(Collectors.toMap(Event::getId, u -> u));
-
-        List<EventResponse.toDto> summaryDtoList = idPage.getContent().stream()
-                .map(eventMap::get)
-                .filter(Objects::nonNull)
-                .map(eventMapper::toDto)
-                .toList();
-
-        log.info("Returning {} event DTO(s)", summaryDtoList.size());
-
-        return new PageImpl<>(summaryDtoList, pageable, idPage.getTotalElements());
-    }
 
     @Transactional(readOnly = true)
     public Page<EventResponse.toPublicDto> getPublicEvents(String searchTerm, String status, Pageable pageable) {
@@ -87,14 +69,19 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
-    public Page<EventResponse.toPublicDto> getOrganizerEvents(
+    public Page<EventResponse.toPublicDto> getEvents(
             Long organizerId,
             String searchTerm,
             String status,
+            LocalDate startDate,
+            LocalDate endDate,
             Pageable pageable) {
 
+        LocalDateTime startDateTime = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime endDateTime = endDate != null ? endDate.atTime(LocalTime.MAX) : null;
+
         Page<Long> ids = eventRepository.findOrganizerEventIds(
-                organizerId, searchTerm, status, pageable);
+                organizerId, searchTerm, status, startDateTime, endDateTime, pageable);
 
         if (ids.isEmpty()) return Page.empty(pageable);
 
@@ -154,8 +141,11 @@ public class EventService {
                 .description(request.getDescription())
                 .organizer(securityUtils.getCurrentUser())
                 .build();
+
         event = eventRepository.save(event);
+
         log.info("Event created: {}", event.getTitle());
+
         return eventMapper.toSimpleDto(event);
     }
 
@@ -237,4 +227,5 @@ public class EventService {
             );
         }
     }
+
 }
